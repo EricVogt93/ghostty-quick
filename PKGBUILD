@@ -14,7 +14,7 @@ optdepends=(
     'jq: for hyprland monitor detection'
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/EricVogt93/$pkgname/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('974809802d50eb73fe7386fbbafbf035c8ca0c41ccf69022644b9985a5fc0331')
 
 package() {
     cd "$pkgname-$pkgver"
