@@ -1,0 +1,6 @@
+# AUR build artifacts
+pkg/
+src/
+*.tar.gz
+*.tar.zst
+.SRCINFO

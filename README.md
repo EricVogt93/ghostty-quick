@@ -4,6 +4,14 @@ Dropdown terminal with persistent multiplexer session for Ghostty. Auto-detects 
 
 ## Install
 
+### Arch Linux (AUR)
+
+```bash
+yay -S ghostty-quick
+```
+
+### Manual
+
 ```bash
 git clone https://github.com/EricVogt93/ghostty-quick.git
 cd ghostty-quick
