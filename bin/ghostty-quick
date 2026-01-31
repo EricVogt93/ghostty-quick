@@ -1,38 +1,280 @@
 #!/bin/bash
-# ghostty-quick - Persistent terminal multiplexer session
+# ghostty-quick - Dropdown terminal with persistent multiplexer session
 
-SESSION="${GQ_SESSION:-dropdown}"
-MUX="${GQ_MUX:-auto}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty-quick"
+CONFIG_FILE="$CONFIG_DIR/config"
+
+# Defaults
+SESSION="dropdown"
+MUX="auto"
+WIDTH="100%"
+HEIGHT="40%"
+HOTKEY="F12"
+
+# Load config file
+load_config() {
+    [[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+}
+
+# Save config file
+save_config() {
+    mkdir -p "$CONFIG_DIR"
+    cat > "$CONFIG_FILE" << EOF
+# ghostty-quick configuration
+
+# Session name
+SESSION="$SESSION"
+
+# Multiplexer: auto, zellij, tmux
+MUX="$MUX"
+
+# Window dimensions (px or %)
+WIDTH="$WIDTH"
+HEIGHT="$HEIGHT"
+
+# Hotkey for dropdown toggle
+HOTKEY="$HOTKEY"
+EOF
+    echo "Config saved to $CONFIG_FILE"
+}
+
+# Parse dimension (supports px and %)
+parse_dimension() {
+    local value="$1"
+    local screen_size="$2"
+
+    if [[ "$value" == *% ]]; then
+        local percent="${value%\%}"
+        echo $(( screen_size * percent / 100 ))
+    elif [[ "$value" == *px ]]; then
+        echo "${value%px}"
+    else
+        # Assume px if no unit
+        echo "$value"
+    fi
+}
+
+# Get screen dimensions
+get_screen_size() {
+    if command -v xdpyinfo &>/dev/null; then
+        xdpyinfo 2>/dev/null | awk '/dimensions:/{print $2}'
+    elif command -v wlr-randr &>/dev/null; then
+        wlr-randr 2>/dev/null | awk '/current/{print $1}' | head -1
+    elif command -v hyprctl &>/dev/null; then
+        hyprctl monitors -j 2>/dev/null | jq -r '.[0] | "\(.width)x\(.height)"'
+    else
+        echo "1920x1080"
+    fi
+}
+
+# Calculate window dimensions
+calc_dimensions() {
+    local screen=$(get_screen_size)
+    local screen_w="${screen%x*}"
+    local screen_h="${screen#*x}"
+
+    CALC_WIDTH=$(parse_dimension "$WIDTH" "$screen_w")
+    CALC_HEIGHT=$(parse_dimension "$HEIGHT" "$screen_h")
+}
+
+# Register hotkey with desktop environment
+register_hotkey() {
+    local key="${1:-$HOTKEY}"
+
+    if command -v kwriteconfig6 &>/dev/null; then
+        # KDE Plasma 6
+        kwriteconfig6 --file kglobalshortcutsrc --group "ghostty-quick" --key "_k_friendly_name" "Ghostty Quick Terminal"
+        kwriteconfig6 --file kglobalshortcutsrc --group "ghostty-quick" --key "toggle" "$(hotkey_to_kde "$key"),none,Toggle Dropdown Terminal"
+        qdbus6 org.kde.KGlobalAccel /kglobalaccel org.kde.KGlobalAccel.blockGlobalShortcuts false 2>/dev/null
+        echo "KDE hotkey registered: $key → ghostty-quick toggle"
+    elif command -v kwriteconfig5 &>/dev/null; then
+        # KDE Plasma 5
+        kwriteconfig5 --file kglobalshortcutsrc --group "ghostty-quick" --key "_k_friendly_name" "Ghostty Quick Terminal"
+        kwriteconfig5 --file kglobalshortcutsrc --group "ghostty-quick" --key "toggle" "$(hotkey_to_kde "$key"),none,Toggle Dropdown Terminal"
+        echo "KDE hotkey registered: $key → ghostty-quick toggle"
+    elif [[ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
+        # Hyprland
+        echo "Add to ~/.config/hypr/hyprland.conf:"
+        echo "  bind = , $key, exec, ghostty-quick toggle"
+    elif [[ -n "$SWAYSOCK" ]]; then
+        # Sway
+        echo "Add to ~/.config/sway/config:"
+        echo "  bindsym $key exec ghostty-quick toggle"
+    else
+        echo "Unknown desktop. Manual hotkey setup required."
+        echo "Command: ghostty-quick toggle"
+    fi
+}
+
+# Convert hotkey to KDE format
+hotkey_to_kde() {
+    echo "$1" | sed 's/+/+/g'
+}
+
+# Show current config
+show_config() {
+    echo "ghostty-quick configuration:"
+    echo "  Config file: $CONFIG_FILE"
+    echo "  Session:     $SESSION"
+    echo "  Multiplexer: $MUX"
+    echo "  Width:       $WIDTH"
+    echo "  Height:      $HEIGHT"
+    echo "  Hotkey:      $HOTKEY"
+
+    if [[ -f "$CONFIG_FILE" ]]; then
+        calc_dimensions
+        echo ""
+        echo "Calculated dimensions: ${CALC_WIDTH}x${CALC_HEIGHT}px"
+    fi
+}
 
 # Auto-detect multiplexer
-if [[ "$MUX" == "auto" ]]; then
-    if command -v zellij &>/dev/null; then
-        MUX="zellij"
-    elif command -v tmux &>/dev/null; then
-        MUX="tmux"
-    else
-        echo "No multiplexer found. Install zellij or tmux." >&2
-        exit 1
+detect_mux() {
+    if [[ "$MUX" == "auto" ]]; then
+        if command -v zellij &>/dev/null; then
+            MUX="zellij"
+        elif command -v tmux &>/dev/null; then
+            MUX="tmux"
+        else
+            echo "No multiplexer found. Install zellij or tmux." >&2
+            exit 1
+        fi
     fi
-fi
+}
 
-case "$MUX" in
-    zellij)
-        if zellij list-sessions 2>/dev/null | grep -q "$SESSION"; then
-            exec zellij attach "$SESSION"
-        else
-            exec zellij --session "$SESSION"
-        fi
-        ;;
-    tmux)
-        if tmux has-session -t "$SESSION" 2>/dev/null; then
-            exec tmux attach -t "$SESSION"
-        else
-            exec tmux new-session -s "$SESSION"
-        fi
-        ;;
-    *)
-        echo "Unknown multiplexer: $MUX" >&2
-        exit 1
-        ;;
-esac
+# Run multiplexer session
+run_session() {
+    case "$MUX" in
+        zellij)
+            if zellij list-sessions 2>/dev/null | grep -q "^$SESSION\$"; then
+                exec zellij attach "$SESSION"
+            else
+                exec zellij --session "$SESSION"
+            fi
+            ;;
+        tmux)
+            if tmux has-session -t "$SESSION" 2>/dev/null; then
+                exec tmux attach -t "$SESSION"
+            else
+                exec tmux new-session -s "$SESSION"
+            fi
+            ;;
+        *)
+            echo "Unknown multiplexer: $MUX" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Usage
+usage() {
+    cat << EOF
+Usage: ghostty-quick [command] [options]
+
+Commands:
+  (none)              Start/attach to session
+  toggle              Toggle dropdown terminal window
+  config              Show current configuration
+  set KEY=VALUE       Set config value (e.g., width=80%, hotkey=F12)
+  hotkey [KEY]        Register hotkey with desktop environment
+  init                Create default config file
+
+Options:
+  -w, --width VALUE   Window width (e.g., 800px, 100%)
+  -h, --height VALUE  Window height (e.g., 600px, 40%)
+  -s, --session NAME  Session name
+  -m, --mux TYPE      Multiplexer (auto, zellij, tmux)
+  --help              Show this help
+
+Examples:
+  ghostty-quick                     # Start with defaults
+  ghostty-quick -w 80% -h 50%       # Custom size
+  ghostty-quick set width=1200px    # Save width to config
+  ghostty-quick set hotkey=Ctrl+\`   # Set hotkey
+  ghostty-quick hotkey              # Register hotkey with DE
+EOF
+}
+
+# Main
+load_config
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        toggle)
+            # Toggle via window class (for WM integration)
+            calc_dimensions
+            if command -v ghostty &>/dev/null; then
+                exec ghostty --class=ghostty-dropdown \
+                    --window-width="$CALC_WIDTH" \
+                    --window-height="$CALC_HEIGHT" \
+                    -e "$0"
+            else
+                echo "Ghostty not found" >&2
+                exit 1
+            fi
+            ;;
+        config)
+            show_config
+            exit 0
+            ;;
+        set)
+            shift
+            if [[ "$1" == *=* ]]; then
+                key="${1%%=*}"
+                value="${1#*=}"
+                case "$key" in
+                    width|WIDTH) WIDTH="$value" ;;
+                    height|HEIGHT) HEIGHT="$value" ;;
+                    session|SESSION) SESSION="$value" ;;
+                    mux|MUX) MUX="$value" ;;
+                    hotkey|HOTKEY) HOTKEY="$value" ;;
+                    *) echo "Unknown key: $key" >&2; exit 1 ;;
+                esac
+                save_config
+            else
+                echo "Usage: ghostty-quick set KEY=VALUE" >&2
+                exit 1
+            fi
+            exit 0
+            ;;
+        hotkey)
+            shift
+            register_hotkey "$1"
+            exit 0
+            ;;
+        init)
+            save_config
+            exit 0
+            ;;
+        -w|--width)
+            shift
+            WIDTH="$1"
+            ;;
+        -h|--height)
+            shift
+            HEIGHT="$1"
+            ;;
+        -s|--session)
+            shift
+            SESSION="$1"
+            ;;
+        -m|--mux)
+            shift
+            MUX="$1"
+            ;;
+        --help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+detect_mux
+run_session
