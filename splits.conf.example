@@ -1,0 +1,11 @@
+# Ghostty Quick Terminal Split Configuration
+#
+# LAYOUT options:
+#   single    - No splits (default)
+#   hsplit    - Horizontal split (2 panes side by side)
+#   vsplit    - Vertical split (2 panes stacked)
+#   quad      - 4 panes (2x2 grid)
+#
+# Change and save - takes effect on next Quick Terminal open
+
+LAYOUT=single

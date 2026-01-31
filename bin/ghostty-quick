@@ -1,0 +1,32 @@
+#!/bin/bash
+# Ghostty Quick Terminal - zellij wrapper
+# Config: ~/.config/ghostty/splits.conf
+
+SESSION="dropdown"
+SPLITS_CONF="$HOME/.config/ghostty/splits.conf"
+LAYOUTS_DIR="$HOME/.config/zellij/layouts"
+
+# Load config
+[[ -f "$SPLITS_CONF" ]] && source "$SPLITS_CONF"
+LAYOUT="${LAYOUT:-single}"
+
+# Map to zellij layout file
+case "$LAYOUT" in
+    hsplit)    ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-hsplit.kdl" ;;
+    vsplit)    ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-vsplit.kdl" ;;
+    quad)      ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-quad.kdl" ;;
+    *)         ZJ_LAYOUT="" ;;
+esac
+
+# Check if session exists (active or dead)
+if zellij list-sessions 2>/dev/null | grep -q "$SESSION"; then
+    # Session exists - attach (resurrects dead sessions)
+    exec zellij attach "$SESSION"
+else
+    # No session - create new
+    if [[ -n "$ZJ_LAYOUT" && -f "$ZJ_LAYOUT" ]]; then
+        exec zellij --session "$SESSION" --layout "$ZJ_LAYOUT"
+    else
+        exec zellij --session "$SESSION"
+    fi
+fi
