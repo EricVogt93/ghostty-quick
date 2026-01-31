@@ -1,32 +1,10 @@
 #!/bin/bash
-# ghostty-quick - Zellij session manager for Ghostty Quick Terminal
+# ghostty-quick - Persistent zellij session for Ghostty Quick Terminal
 
-SESSION="dropdown"
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-SPLITS_CONF="$CONFIG_HOME/ghostty/splits.conf"
-LAYOUTS_DIR="$CONFIG_HOME/zellij/layouts"
+SESSION="${GHOSTTY_SESSION:-dropdown}"
 
-# Load config
-[[ -f "$SPLITS_CONF" ]] && source "$SPLITS_CONF"
-LAYOUT="${LAYOUT:-single}"
-
-# Map to zellij layout file
-case "$LAYOUT" in
-    hsplit)    ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-hsplit.kdl" ;;
-    vsplit)    ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-vsplit.kdl" ;;
-    quad)      ZJ_LAYOUT="$LAYOUTS_DIR/dropdown-quad.kdl" ;;
-    *)         ZJ_LAYOUT="" ;;
-esac
-
-# Check if session exists (active or dead)
 if zellij list-sessions 2>/dev/null | grep -q "$SESSION"; then
-    # Session exists - attach (resurrects dead sessions)
     exec zellij attach "$SESSION"
 else
-    # No session - create new
-    if [[ -n "$ZJ_LAYOUT" && -f "$ZJ_LAYOUT" ]]; then
-        exec zellij --session "$SESSION" --layout "$ZJ_LAYOUT"
-    else
-        exec zellij --session "$SESSION"
-    fi
+    exec zellij --session "$SESSION"
 fi
