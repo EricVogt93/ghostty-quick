@@ -9,4 +9,4 @@ cp "$SCRIPT_DIR/bin/ghostty-quick" "$BIN_DIR/"
 chmod +x "$BIN_DIR/ghostty-quick"
 
 echo "Installed to $BIN_DIR/ghostty-quick"
-echo "Add alias: alias zj='ghostty-quick'"
+echo "Add alias: alias gq='ghostty-quick'"

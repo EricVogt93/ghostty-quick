@@ -1,6 +1,6 @@
 # ghostty-quick
 
-Persistent zellij session for Ghostty's Quick Terminal.
+Persistent multiplexer session for Ghostty's Quick Terminal (or any terminal). Auto-detects zellij or tmux.
 
 ## Install
 
@@ -12,22 +12,28 @@ cd ghostty-quick
 
 Add to your shell rc:
 ```bash
-alias zj='ghostty-quick'
+alias gq='ghostty-quick'
 ```
 
 ## Usage
 
 ```bash
-zj
+gq
 ```
 
-Creates or attaches to a persistent `dropdown` zellij session.
+Creates or attaches to a persistent `dropdown` session.
 
 ## Config
 
-Set `GHOSTTY_SESSION` env var to use a different session name.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GQ_SESSION` | `dropdown` | Session name |
+| `GQ_MUX` | `auto` | Multiplexer: `auto`, `zellij`, `tmux` |
 
 ## Requirements
 
-- [Ghostty](https://ghostty.org)
-- [Zellij](https://zellij.dev)
+- [zellij](https://zellij.dev) or [tmux](https://github.com/tmux/tmux)
+
+## License
+
+MIT
