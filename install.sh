@@ -3,26 +3,30 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Detect XDG paths (works on Linux/macOS/BSD)
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+
 echo "Installing ghostty-quick..."
 
-# Install main script
-mkdir -p ~/.local/bin
-cp "$SCRIPT_DIR/bin/ghostty-quick" ~/.local/bin/ghostty-quick
-chmod +x ~/.local/bin/ghostty-quick
-
-# Symlink for backwards compatibility
-ln -sf ~/.local/bin/ghostty-quick ~/.local/bin/ghostty-dropdown
+# Install script
+mkdir -p "$BIN_DIR"
+cp "$SCRIPT_DIR/bin/ghostty-quick" "$BIN_DIR/ghostty-quick"
+chmod +x "$BIN_DIR/ghostty-quick"
 
 # Install zellij layouts
-mkdir -p ~/.config/zellij/layouts
-cp "$SCRIPT_DIR/layouts/"*.kdl ~/.config/zellij/layouts/ 2>/dev/null || true
+mkdir -p "$CONFIG_HOME/zellij/layouts"
+cp "$SCRIPT_DIR/layouts/"*.kdl "$CONFIG_HOME/zellij/layouts/"
 
-# Install example config if none exists
-if [[ ! -f ~/.config/ghostty/splits.conf ]]; then
-    mkdir -p ~/.config/ghostty
-    cp "$SCRIPT_DIR/splits.conf.example" ~/.config/ghostty/splits.conf
-    echo "Created ~/.config/ghostty/splits.conf"
+# Example config
+if [[ ! -f "$CONFIG_HOME/ghostty/splits.conf" ]]; then
+    mkdir -p "$CONFIG_HOME/ghostty"
+    cp "$SCRIPT_DIR/splits.conf.example" "$CONFIG_HOME/ghostty/splits.conf"
 fi
 
-echo "Done! Add this alias to your shell rc:"
+echo "Done!"
+echo ""
+echo "Add to your shell rc:"
 echo "  alias zj='ghostty-quick'"
+echo ""
+echo "Make sure $BIN_DIR is in your PATH"

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Ghostty Quick Terminal - zellij wrapper
-# Config: ~/.config/ghostty/splits.conf
+# ghostty-quick - Zellij session manager for Ghostty Quick Terminal
 
 SESSION="dropdown"
-SPLITS_CONF="$HOME/.config/ghostty/splits.conf"
-LAYOUTS_DIR="$HOME/.config/zellij/layouts"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+SPLITS_CONF="$CONFIG_HOME/ghostty/splits.conf"
+LAYOUTS_DIR="$CONFIG_HOME/zellij/layouts"
 
 # Load config
 [[ -f "$SPLITS_CONF" ]] && source "$SPLITS_CONF"
